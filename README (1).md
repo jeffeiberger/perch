@@ -1,4 +1,4 @@
-# ColdChain Monitor PWA
+# ColdChain Monitor PWA - JE
 
 Real-time refrigerated cargo dashboard. A GitHub Action polls the Samsara
 API every ~30 seconds, writes telemetry to `data.json`, and commits it back
