@@ -52,11 +52,10 @@
     }
     .header-brand { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
     .brand-logo {
-      height: 36px;
+      height: 38px;
       width: auto;
       object-fit: contain;
-      filter: brightness(0) invert(1);
-      opacity: 0.92;
+      border-radius: 4px;
     }
     .brand-text { display: flex; flex-direction: column; gap: 0; }
     .brand-name {
@@ -422,24 +421,30 @@ function drawChart() {
   }
 
   // X-axis relative time labels
-  // Always label the last point "NOW", then label every ~2 min back
-  const nowTs   = new Date(chartPoints[n - 1].ts).getTime();
-  // Label the rightmost point and then every point that falls on a whole minute boundary
-  const labeledMinutes = new Set();
+  // Walk right-to-left from NOW, only draw a label if it's at least MIN_GAP px
+  // away from the previously drawn label. This prevents all overlap.
+  const nowTs    = new Date(chartPoints[n - 1].ts).getTime();
+  const MIN_GAP  = 28;   // minimum pixels between label centers
   ctx.font = '9px IBM Plex Mono, monospace';
   ctx.textAlign = 'center';
+
+  let lastDrawnX = Infinity;
+  const labeledMinutes = new Set();
 
   for (let i = n - 1; i >= 0; i--) {
     const diffMs  = nowTs - new Date(chartPoints[i].ts).getTime();
     const diffMin = Math.round(diffMs / 60000);
     const label   = diffMin === 0 ? 'NOW' : '-' + diffMin + 'm';
+    const x       = xForIdx(i);
 
-    // Show "NOW" always, and whole-minute marks without repeating
-    if (diffMin === 0 || (!labeledMinutes.has(diffMin) && diffMin % 1 === 0)) {
-      labeledMinutes.add(diffMin);
-      // Avoid crowding: only draw if there's enough space from next label
-      ctx.fillStyle = diffMin === 0 ? '#7a8fb0' : '#3d5070';
-      ctx.fillText(label, xForIdx(i), CHART_H - 4);
+    // Only draw whole-minute marks (and NOW), and only when spaced far enough
+    if ((diffMin === 0 || diffMin % 1 === 0) && !labeledMinutes.has(diffMin)) {
+      if (lastDrawnX - x >= MIN_GAP) {
+        labeledMinutes.add(diffMin);
+        ctx.fillStyle = diffMin === 0 ? '#7a8fb0' : '#3d5070';
+        ctx.fillText(label, x, CHART_H - 4);
+        lastDrawnX = x;
+      }
     }
   }
 
