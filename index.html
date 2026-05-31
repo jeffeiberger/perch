@@ -45,16 +45,12 @@
       border-bottom: 1px solid var(--border);
       padding: 0.5rem 1rem;
       display: flex;
-      align-items: center;
-      gap: 1rem;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      white-space: nowrap;
-      flex-wrap: nowrap;
+      flex-direction: column;
+      gap: 0.35rem;
     }
-    header::-webkit-scrollbar { display: none; }
+    .header-row { display: flex; align-items: center; gap: 1rem; flex-wrap: nowrap; }
     .header-brand { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
-    .brand-logo { height: 36px; width: auto; object-fit: contain; border-radius: 4px; flex-shrink: 0; }
+    .brand-logo { height: 34px; width: auto; object-fit: contain; border-radius: 4px; flex-shrink: 0; }
     .brand-text { display: flex; flex-direction: column; gap: 0; flex-shrink: 0; }
     .brand-name {
       font-family: var(--font-display); font-weight: 700;
@@ -65,9 +61,7 @@
       font-family: var(--font-mono); font-size: 8px;
       color: var(--text-muted); letter-spacing: 0.15em; text-transform: uppercase;
     }
-    .header-divider {
-      width: 1px; height: 32px; background: var(--border); flex-shrink: 0;
-    }
+    .header-divider { width: 1px; height: 28px; background: var(--border); flex-shrink: 0; }
     .header-meta { display: flex; gap: 1rem; align-items: center; flex-shrink: 0; }
     .meta-group  { display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
     .meta-label  { font-size: 9px; font-family: var(--font-mono); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.12em; }
@@ -166,30 +160,30 @@
 <body>
 
 <header>
-  <div class="header-brand">
-    <img class="brand-logo" src="parliament-logo.png" alt="Parliament Trucking" />
-    <div class="brand-text">
-      <span class="brand-name">Perch</span>
-      <span class="brand-sub">by Parliament Trucking</span>
+  <!-- Row 1: Logo + Vehicle -->
+  <div class="header-row">
+    <div class="header-brand">
+      <img class="brand-logo" src="parliament-logo.png" alt="Parliament Trucking" />
+      <div class="brand-text">
+        <span class="brand-name">Perch</span>
+        <span class="brand-sub">by Parliament Trucking</span>
+      </div>
     </div>
-  </div>
-  <div class="header-divider"></div>
-  <div class="header-meta">
+    <div class="header-divider"></div>
     <div class="meta-group">
       <span class="meta-label">Vehicle</span>
       <span class="meta-value highlight" id="hdr-vehicle">—</span>
     </div>
-    <div class="meta-group">
-      <span class="meta-label">VIN</span>
-      <span class="meta-value" id="hdr-vin">—</span>
-    </div>
+  </div>
+  <!-- Row 2: Driver, Customer, Status -->
+  <div class="header-row">
     <div class="meta-group">
       <span class="meta-label">Driver</span>
       <span class="meta-value" id="hdr-driver">—</span>
     </div>
     <div class="meta-group">
       <span class="meta-label">Customer</span>
-      <span class="meta-value highlight">Stater Bros.</span>
+      <span class="meta-value highlight">Stater Bros #42</span>
     </div>
     <div class="meta-group">
       <span class="meta-label">Status</span>
@@ -286,7 +280,6 @@ function applyData(store) {
   const v = store.vehicle || {};
   const d = store.driver  || {};
   document.getElementById('hdr-vehicle').textContent = v.name || '—';
-  document.getElementById('hdr-vin').textContent     = v.vin  || '—';
   document.getElementById('hdr-driver').textContent  = d.name || '—';
 
   const points = store.points || [];
@@ -295,11 +288,11 @@ function applyData(store) {
   const latest = points[points.length - 1];
   updateStatusCards(latest);
 
-  // Status badge in header
+  // Status badge in header — use latest point's status
   const statusEl = document.getElementById('hdr-status');
-  const status   = latest.status || '—';
+  const status   = (latest.status && latest.status !== 'null') ? latest.status : '—';
   statusEl.textContent = status;
-  statusEl.className   = 'meta-value status-' + status.toLowerCase();
+  statusEl.className   = 'meta-value status-' + (status !== '—' ? status.toLowerCase() : 'unknown');
 
   const latestTime = new Date(latest.ts);
   const ageMs = Date.now() - latestTime.getTime();
