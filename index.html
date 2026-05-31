@@ -72,8 +72,12 @@
     .header-meta { display: flex; gap: 1.25rem; flex-wrap: wrap; align-items: center; }
     .meta-group  { display: flex; flex-direction: column; gap: 1px; }
     .meta-label  { font-size: 9px; font-family: var(--font-mono); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.15em; }
-    .meta-value  { font-size: 12px; font-family: var(--font-mono); color: var(--text-secondary); letter-spacing: 0.04em; }
+    .meta-value  { font-size: 12px; font-family: var(--font-mono); color: var(--text-secondary); letter-spacing: 0.04em; white-space: normal; word-break: break-word; max-width: 120px; line-height: 1.3; }
     .meta-value.highlight { color: var(--blue); }
+    .meta-value.status-loading   { color: #ffcc00; }
+    .meta-value.status-unloading { color: #4da6ff; }
+    .meta-value.status-driving   { color: #00e676; }
+    .meta-value.status-unknown   { color: var(--text-muted); }
 
     /* MAIN */
     main {
@@ -189,6 +193,10 @@
       <span class="meta-label">Customer</span>
       <span class="meta-value highlight">Stater Bros. Grocery</span>
     </div>
+    <div class="meta-group">
+      <span class="meta-label">Status</span>
+      <span class="meta-value" id="hdr-status">—</span>
+    </div>
   </div>
 </header>
 
@@ -258,10 +266,10 @@ const STALE_MS   = 3 * 60 * 1000;
 
 const POINT_W   = 14;
 const CHART_H   = 240;
-const PAD_LEFT  = 52;
-const PAD_RIGHT = 20;
+const PAD_LEFT  = 8;    // no labels on left anymore
+const PAD_RIGHT = 46;   // labels now live on the right
 const PAD_TOP   = 18;
-const PAD_BOT   = 36;   // slightly tighter — labels are shorter now
+const PAD_BOT   = 36;
 
 let chartPoints = [];
 
@@ -288,6 +296,12 @@ function applyData(store) {
 
   const latest = points[points.length - 1];
   updateStatusCards(latest);
+
+  // Status badge in header
+  const statusEl = document.getElementById('hdr-status');
+  const status   = latest.status || '—';
+  statusEl.textContent = status;
+  statusEl.className   = 'meta-value status-' + status.toLowerCase();
 
   const latestTime = new Date(latest.ts);
   const ageMs = Date.now() - latestTime.getTime();
@@ -398,10 +412,10 @@ function drawChart() {
     ctx.fillStyle = 'rgba(255,68,68,0.7)';
     ctx.font = '9px IBM Plex Mono, monospace';
     ctx.textAlign = 'left';
-    ctx.fillText(t + '°F', 2, y + 3);
+    ctx.fillText(t + '°F', W - PAD_RIGHT + 4, y + 3);
   });
 
-  // Y-axis grid
+  // Y-axis grid + labels on RIGHT
   for (let t = 30; t <= 55; t += 5) {
     const y = tempToY(t);
     ctx.strokeStyle = '#1e2d4a'; ctx.lineWidth = 0.5;
@@ -410,8 +424,8 @@ function drawChart() {
     ctx.setLineDash([]);
     ctx.fillStyle = '#3d5070';
     ctx.font = '9px IBM Plex Mono, monospace';
-    ctx.textAlign = 'right';
-    ctx.fillText(t + '°', PAD_LEFT - 6, y + 3);
+    ctx.textAlign = 'left';
+    ctx.fillText(t + '°', W - PAD_RIGHT + 4, y + 3);
   }
 
   const n = chartPoints.length;
@@ -484,10 +498,10 @@ function drawChart() {
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.font = '8px IBM Plex Mono, monospace';
-    ctx.textAlign = 'right';
+    ctx.textAlign = 'left';
     ctx.fillStyle = '#8888bb';
-    ctx.fillText('OPEN', PAD_LEFT - 6, doorToY(true) + 3);
-    ctx.fillText('CLSD', PAD_LEFT - 6, doorToY(false) + 3);
+    ctx.fillText('OPEN', W - PAD_RIGHT + 4, doorToY(true) + 3);
+    ctx.fillText('CLSD', W - PAD_RIGHT + 4, doorToY(false) + 3);
   }
 
   // Speed state machine — Moving / Stopped
@@ -510,10 +524,10 @@ function drawChart() {
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.font = '8px IBM Plex Mono, monospace';
-    ctx.textAlign = 'right';
+    ctx.textAlign = 'left';
     ctx.fillStyle = '#ff9500';
-    ctx.fillText('MOV', PAD_LEFT - 6, motionToY(true) + 3);
-    ctx.fillText('STP', PAD_LEFT - 6, motionToY(false) + 3);
+    ctx.fillText('MOV', W - PAD_RIGHT + 4, motionToY(true) + 3);
+    ctx.fillText('STP', W - PAD_RIGHT + 4, motionToY(false) + 3);
   }
 
   // Auto-scroll to right
