@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0f1e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>ColdChain Monitor</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-deep: #080d1a;
+      --bg-panel: #0e1528;
+      --bg-card: #131c32;
+      --bg-card-2: #182038;
+      --border: #1e2d4a;
+      --border-bright: #2a4070;
+      --text-primary: #e8edf7;
+      --text-secondary: #7a8fb0;
+      --text-muted: #3d5070;
+      --green: #00e676;
+      --green-dim: #00c85a;
+      --green-bg: rgba(0,230,118,0.08);
+      --red: #ff4444;
+      --red-dim: #dd2222;
+      --red-bg: rgba(255,68,68,0.08);
+      --yellow: #ffcc00;
+      --yellow-dim: #dba800;
+      --yellow-bg: rgba(255,204,0,0.08);
+      --blue: #4da6ff;
+      --blue-dim: #2a7fd4;
+      --font-display: 'Rajdhani', sans-serif;
+      --font-mono: 'IBM Plex Mono', monospace;
+      --font-body: 'Inter', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border);
+      padding: 0.75rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .brand-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--blue-dim), var(--blue));
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 14px;
+      color: #fff;
+      letter-spacing: 0.05em;
+      flex-shrink: 0;
+    }
+
+    .brand-name {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.1rem;
+      letter-spacing: 0.12em;
+      color: var(--text-primary);
+      text-transform: uppercase;
+    }
+
+    .header-meta {
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .meta-group {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .meta-label {
+      font-size: 9px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+    }
+
+    .meta-value {
+      font-size: 12px;
+      font-family: var(--font-mono);
+      color: var(--text-secondary);
+      letter-spacing: 0.04em;
+    }
+
+    .meta-value.highlight {
+      color: var(--blue);
+    }
+
+    .live-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0,230,118,0.1);
+      border: 1px solid rgba(0,230,118,0.25);
+      border-radius: 20px;
+      padding: 4px 10px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--green);
+      letter-spacing: 0.1em;
+    }
+
+    .live-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.7); }
+    }
+
+    /* ── MAIN CONTENT ── */
+    main {
+      flex: 1;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* ── STATUS ROW ── */
+    .status-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .status-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .status-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      border-radius: 12px 12px 0 0;
+    }
+
+    .status-card.temp::before { background: var(--temp-accent, var(--green)); }
+    .status-card.door::before { background: var(--door-accent, var(--green)); }
+
+    .status-card-label {
+      font-size: 9px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+    }
+
+    .status-card-value {
+      font-family: var(--font-display);
+      font-size: 4rem;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0.02em;
+      transition: color 0.4s ease;
+    }
+
+    .status-card-sub {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+    }
+
+    /* ── GOODS + CUSTOMER ROW ── */
+    .info-row {
+      display: flex;
+      gap: 1rem;
+      align-items: stretch;
+    }
+
+    .info-pill {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.6rem 1rem;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .info-pill .pill-label {
+      color: var(--text-muted);
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      flex-shrink: 0;
+    }
+
+    /* ── GRAPH SECTION ── */
+    .graph-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      flex: 1;
+    }
+
+    .graph-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+
+    .graph-title {
+      font-family: var(--font-display);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: var(--text-secondary);
+    }
+
+    .graph-legend {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+    }
+
+    .legend-dot {
+      width: 8px; height: 2px;
+      border-radius: 1px;
+    }
+
+    .graph-scroll-wrapper {
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      cursor: grab;
+    }
+
+    .graph-scroll-wrapper:active { cursor: grabbing; }
+
+    .graph-scroll-wrapper::-webkit-scrollbar {
+      height: 4px;
+    }
+    .graph-scroll-wrapper::-webkit-scrollbar-track {
+      background: var(--bg-panel);
+      border-radius: 2px;
+    }
+    .graph-scroll-wrapper::-webkit-scrollbar-thumb {
+      background: var(--border-bright);
+      border-radius: 2px;
+    }
+
+    canvas#chartCanvas {
+      display: block;
+    }
+
+    /* ── THRESHOLD LINES ANNOTATION ── */
+    .threshold-annotation {
+      display: flex;
+      gap: 1.5rem;
+      margin-top: 0.5rem;
+    }
+
+    .threshold-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+    }
+
+    .threshold-line {
+      width: 16px; height: 1px;
+      border-top: 1px dashed;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      background: var(--bg-panel);
+      border-top: 1px solid var(--border);
+      padding: 0.6rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .footer-text {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      letter-spacing: 0.06em;
+    }
+
+    .update-time {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 500px) {
+      .status-card-value { font-size: 3rem; }
+      .header-meta { gap: 0.75rem; }
+      .meta-group:nth-child(n+4) { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="header-brand">
+      <div class="brand-icon">CC</div>
+      <span class="brand-name">ColdChain</span>
+    </div>
+
+    <div class="header-meta">
+      <div class="meta-group">
+        <span class="meta-label">Vehicle</span>
+        <span class="meta-value highlight" id="hdr-vehicle">Loading…</span>
+      </div>
+      <div class="meta-group">
+        <span class="meta-label">VIN</span>
+        <span class="meta-value" id="hdr-vin">—</span>
+      </div>
+      <div class="meta-group">
+        <span class="meta-label">Driver</span>
+        <span class="meta-value" id="hdr-driver">—</span>
+      </div>
+      <div class="meta-group">
+        <span class="meta-label">Customer</span>
+        <span class="meta-value highlight">Stater Bros. Grocery</span>
+      </div>
+    </div>
+
+    <div class="live-badge">
+      <div class="live-dot"></div>
+      LIVE
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main>
+
+    <!-- STATUS CARDS -->
+    <div class="status-row">
+      <div class="status-card temp" id="temp-card">
+        <span class="status-card-label">Temp · Compartment A</span>
+        <span class="status-card-value" id="temp-display">—</span>
+        <span class="status-card-sub" id="temp-range-label">Target: 40°F – 45°F</span>
+      </div>
+      <div class="status-card door" id="door-card">
+        <span class="status-card-label">Door State</span>
+        <span class="status-card-value" id="door-display">—</span>
+        <span class="status-card-sub" id="door-sub">Rear cargo door</span>
+      </div>
+    </div>
+
+    <!-- GOODS + CUSTOMER INFO -->
+    <div class="info-row">
+      <div class="info-pill" style="flex:1;">
+        <span class="pill-label">Goods</span>
+        Potatoes, Green Beans, Sweet Potatoes
+      </div>
+    </div>
+
+    <!-- CHART -->
+    <div class="graph-section">
+      <div class="graph-header">
+        <span class="graph-title">Live Telemetry · Temperature & Door State</span>
+        <div class="graph-legend">
+          <div class="legend-item">
+            <div class="legend-dot" style="background:var(--green); width:16px;"></div>
+            Temp (in range)
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:var(--red); width:16px;"></div>
+            Temp (out of range)
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#aaaacc; width:16px;"></div>
+            Door state
+          </div>
+        </div>
+      </div>
+
+      <div class="graph-scroll-wrapper" id="graphWrapper">
+        <canvas id="chartCanvas" height="240"></canvas>
+      </div>
+
+      <div class="threshold-annotation">
+        <div class="threshold-item">
+          <div class="threshold-line" style="border-color: var(--red);"></div>
+          40°F lower bound
+        </div>
+        <div class="threshold-item">
+          <div class="threshold-line" style="border-color: var(--red);"></div>
+          45°F upper bound
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer>
+    <span class="footer-text">Powered by Samsara Fleet API</span>
+    <span class="update-time" id="footer-time">—</span>
+  </footer>
+
+  <script>
+    // ── CONFIG ──────────────────────────────────────────────────────────────
+    const SAMSARA_API_TOKEN = 'YOUR_SAMSARA_API_TOKEN_HERE';
+    const VEHICLE_ID        = 'YOUR_VEHICLE_ID_HERE';   // Samsara vehicle ID
+    const POLL_INTERVAL_MS  = 5000;   // 5 s polling
+    const TEMP_LOW          = 40;
+    const TEMP_HIGH         = 45;
+
+    // For simulated/demo mode (no real token), set DEMO_MODE = true
+    const DEMO_MODE = (SAMSARA_API_TOKEN === 'YOUR_SAMSARA_API_TOKEN_HERE');
+
+    // ── DATA STORE ──────────────────────────────────────────────────────────
+    const MAX_POINTS = 300;
+    const history = { times: [], temps: [], doors: [] };
+
+    // ── CANVAS CHART ────────────────────────────────────────────────────────
+    const canvas  = document.getElementById('chartCanvas');
+    const ctx     = canvas.getContext('2d');
+    const wrapper = document.getElementById('graphWrapper');
+
+    const POINT_W   = 14;   // px per data point
+    const CHART_H   = 240;
+    const PAD_LEFT  = 52;
+    const PAD_RIGHT = 20;
+    const PAD_TOP   = 18;
+    const PAD_BOT   = 48;
+
+    function getChartW() {
+      return Math.max(wrapper.clientWidth, history.times.length * POINT_W + PAD_LEFT + PAD_RIGHT + 40);
+    }
+
+    function tempToY(t) {
+      const drawH = CHART_H - PAD_TOP - PAD_BOT;
+      const minT = 30, maxT = 55;
+      return PAD_TOP + drawH - ((t - minT) / (maxT - minT)) * drawH;
+    }
+
+    function doorToY(open) {
+      return open ? PAD_TOP + 10 : CHART_H - PAD_BOT - 10;
+    }
+
+    function drawChart() {
+      const W = getChartW();
+      canvas.width  = W;
+      canvas.height = CHART_H;
+
+      ctx.clearRect(0, 0, W, CHART_H);
+
+      const style = getComputedStyle(document.documentElement);
+      const bgCard  = '#131c32';
+      const borderC = '#1e2d4a';
+      const textMut = '#3d5070';
+      const textSec = '#7a8fb0';
+
+      // background
+      ctx.fillStyle = bgCard;
+      ctx.fillRect(0, 0, W, CHART_H);
+
+      // threshold band fill
+      const yHigh = tempToY(TEMP_HIGH);
+      const yLow  = tempToY(TEMP_LOW);
+      ctx.fillStyle = 'rgba(0,230,118,0.04)';
+      ctx.fillRect(PAD_LEFT, yHigh, W - PAD_LEFT - PAD_RIGHT, yLow - yHigh);
+
+      // threshold dashed lines
+      [TEMP_LOW, TEMP_HIGH].forEach(t => {
+        const y = tempToY(t);
+        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = 'rgba(255,68,68,0.5)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(PAD_LEFT, y);
+        ctx.lineTo(W - PAD_RIGHT, y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(255,68,68,0.7)';
+        ctx.font = '9px IBM Plex Mono, monospace';
+        ctx.fillText(t + '°F', 2, y + 3);
+      });
+
+      // Y axis grid lines
+      for (let t = 30; t <= 55; t += 5) {
+        const y = tempToY(t);
+        ctx.strokeStyle = borderC;
+        ctx.lineWidth = 0.5;
+        ctx.setLineDash([2, 4]);
+        ctx.beginPath();
+        ctx.moveTo(PAD_LEFT, y);
+        ctx.lineTo(W - PAD_RIGHT, y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        if (t % 5 === 0) {
+          ctx.fillStyle = textMut;
+          ctx.font = '9px IBM Plex Mono, monospace';
+          ctx.textAlign = 'right';
+          ctx.fillText(t + '°', PAD_LEFT - 6, y + 3);
+        }
+      }
+
+      const n = history.temps.length;
+      if (n < 2) {
+        // placeholder text
+        ctx.fillStyle = textMut;
+        ctx.font = '12px IBM Plex Mono, monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('Awaiting data…', W / 2, CHART_H / 2);
+        return;
+      }
+
+      // X-axis time labels
+      ctx.font = '9px IBM Plex Mono, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = textMut;
+      const step = Math.max(1, Math.floor(n / 12));
+      for (let i = 0; i < n; i += step) {
+        const x = PAD_LEFT + i * POINT_W + POINT_W / 2;
+        ctx.fillText(history.times[i], x, CHART_H - 4);
+      }
+
+      // Draw temperature line — segment by segment (color changes at threshold crossings)
+      function xForIdx(i) { return PAD_LEFT + i * POINT_W + POINT_W / 2; }
+
+      ctx.lineWidth = 2;
+      ctx.lineJoin  = 'round';
+      ctx.lineCap   = 'round';
+
+      for (let i = 1; i < n; i++) {
+        const t0 = history.temps[i - 1], t1 = history.temps[i];
+        const inRange0 = t0 >= TEMP_LOW && t0 <= TEMP_HIGH;
+        const inRange1 = t1 >= TEMP_LOW && t1 <= TEMP_HIGH;
+        const color = (inRange0 && inRange1) ? '#00e676' : '#ff4444';
+        ctx.strokeStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(xForIdx(i - 1), tempToY(t0));
+        ctx.lineTo(xForIdx(i), tempToY(t1));
+        ctx.stroke();
+      }
+
+      // Draw door state as step function
+      ctx.strokeStyle = '#8888bb';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      for (let i = 0; i < n; i++) {
+        const x = xForIdx(i);
+        const y = doorToY(history.doors[i]);
+        if (i === 0) ctx.moveTo(x, y);
+        else {
+          // step: go horizontal first, then vertical
+          const prevX = xForIdx(i - 1);
+          ctx.lineTo(x, doorToY(history.doors[i - 1]));
+          ctx.lineTo(x, y);
+        }
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Door state labels on Y axis
+      ctx.font = '8px IBM Plex Mono, monospace';
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#8888bb';
+      ctx.fillText('OPEN', PAD_LEFT - 6, doorToY(true) + 3);
+      ctx.fillText('CLSD', PAD_LEFT - 6, doorToY(false) + 3);
+
+      // auto-scroll to right
+      wrapper.scrollLeft = W;
+    }
+
+    // ── UI UPDATE ────────────────────────────────────────────────────────────
+    function updateStatus(temp, doorOpen) {
+      // Temperature card
+      const inRange = temp >= TEMP_LOW && temp <= TEMP_HIGH;
+      const tempEl  = document.getElementById('temp-display');
+      const tempCard = document.getElementById('temp-card');
+      const color   = inRange ? '#00e676' : '#ff4444';
+      const accentVar = inRange ? 'var(--green)' : 'var(--red)';
+      tempEl.textContent = temp.toFixed(1) + '°F';
+      tempEl.style.color = color;
+      tempCard.style.setProperty('--temp-accent', accentVar);
+
+      // Door card
+      const doorEl   = document.getElementById('door-display');
+      const doorCard = document.getElementById('door-card');
+      const doorColor = doorOpen ? '#ffcc00' : '#00e676';
+      const doorAccent = doorOpen ? 'var(--yellow)' : 'var(--green)';
+      doorEl.textContent = doorOpen ? 'OPEN' : 'CLOSED';
+      doorEl.style.color = doorColor;
+      doorCard.style.setProperty('--door-accent', doorAccent);
+
+      // Footer time
+      const now = new Date();
+      document.getElementById('footer-time').textContent =
+        'Last update: ' + now.toLocaleTimeString();
+    }
+
+    function pushDataPoint(temp, doorOpen) {
+      const now = new Date();
+      const label = now.getHours().toString().padStart(2,'0') + ':' +
+                    now.getMinutes().toString().padStart(2,'0') + ':' +
+                    now.getSeconds().toString().padStart(2,'0');
+      history.times.push(label);
+      history.temps.push(temp);
+      history.doors.push(doorOpen);
+      if (history.times.length > MAX_POINTS) {
+        history.times.shift(); history.temps.shift(); history.doors.shift();
+      }
+    }
+
+    // ── SAMSARA API ──────────────────────────────────────────────────────────
+    async function fetchVehicleInfo() {
+      if (DEMO_MODE) {
+        document.getElementById('hdr-vehicle').textContent = 'TRK-0042 (Demo)';
+        document.getElementById('hdr-vin').textContent     = '1HTMKAAR7GH000000';
+        document.getElementById('hdr-driver').textContent  = 'J. Martinez';
+        return;
+      }
+      try {
+        const r = await fetch(
+          `https://api.samsara.com/fleet/vehicles/${VEHICLE_ID}`,
+          { headers: { Authorization: `Bearer ${SAMSARA_API_TOKEN}` } }
+        );
+        const d = await r.json();
+        document.getElementById('hdr-vehicle').textContent =
+          d.data?.name || d.data?.externalIds?.vehicleId || VEHICLE_ID;
+        document.getElementById('hdr-vin').textContent =
+          d.data?.vin || '—';
+      } catch(e) { console.warn('Vehicle info fetch failed', e); }
+
+      try {
+        const r2 = await fetch(
+          `https://api.samsara.com/fleet/drivers?vehicleId=${VEHICLE_ID}`,
+          { headers: { Authorization: `Bearer ${SAMSARA_API_TOKEN}` } }
+        );
+        const d2 = await r2.json();
+        const driver = d2.data?.[0];
+        document.getElementById('hdr-driver').textContent =
+          driver ? driver.name : 'Unassigned';
+      } catch(e) { console.warn('Driver info fetch failed', e); }
+    }
+
+    async function fetchLiveStats() {
+      if (DEMO_MODE) {
+        // Simulate realistic cold-chain data
+        const base = 42 + (Math.random() - 0.5) * 8;
+        const temp = Math.round(base * 10) / 10;
+        // door: mostly closed, occasionally open
+        const doorOpen = Math.random() < 0.12;
+        return { temp, doorOpen };
+      }
+
+      // Real Samsara call — vehicle stats endpoint
+      const url = `https://api.samsara.com/fleet/vehicles/stats?vehicleIds=${VEHICLE_ID}&types=ambientAirTemperature,obdEngineSeconds`;
+      const r = await fetch(url, {
+        headers: { Authorization: `Bearer ${SAMSARA_API_TOKEN}` }
+      });
+      const d = await r.json();
+      const stats = d.data?.[0]?.stats || {};
+
+      // Temperature — Samsara returns Celsius, convert
+      const tempC = stats.ambientAirTemperature?.value ?? null;
+      const tempF = tempC !== null ? (tempC * 9/5 + 32) : null;
+
+      // Door sensor — check your tag/sensor config; key name may vary
+      // Common: stats.doorSensor?.value === 'open'
+      const doorOpen = (stats.doorSensor?.value === 'open') ?? false;
+
+      return { temp: tempF ?? 42, doorOpen };
+    }
+
+    // ── POLL LOOP ────────────────────────────────────────────────────────────
+    async function poll() {
+      try {
+        const { temp, doorOpen } = await fetchLiveStats();
+        pushDataPoint(temp, doorOpen);
+        updateStatus(temp, doorOpen);
+        drawChart();
+      } catch(e) { console.error('Poll error', e); }
+    }
+
+    // ── INIT ─────────────────────────────────────────────────────────────────
+    fetchVehicleInfo();
+    poll();
+    setInterval(poll, POLL_INTERVAL_MS);
+
+    // Redraw on resize
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(drawChart, 100);
+    });
+
+    // Drag-to-scroll on chart wrapper
+    let isDragging = false, startX, scrollStart;
+    wrapper.addEventListener('mousedown', e => {
+      isDragging = true;
+      startX = e.pageX;
+      scrollStart = wrapper.scrollLeft;
+    });
+    window.addEventListener('mousemove', e => {
+      if (!isDragging) return;
+      wrapper.scrollLeft = scrollStart - (e.pageX - startX);
+    });
+    window.addEventListener('mouseup', () => { isDragging = false; });
+  </script>
+</body>
+</html>
