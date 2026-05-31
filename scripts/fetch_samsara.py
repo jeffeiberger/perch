@@ -161,43 +161,57 @@ def fetch_driver(asset_id):
 def fetch_geofence_status(asset_id, speed_mph):
     """
     Determine operational status by checking current GPS position against geofences.
-    Uses /fleet/vehicles/stats?types=gps which returns address/geofence data.
-    Then looks up the address tags to determine DC vs Customer.
-
-    Returns one of: 'Loading', 'Unloading', 'Driving', 'Unknown'
     """
     try:
         data = samsara_get("/fleet/vehicles/stats", {
             "vehicleIds": asset_id,
             "types": "gps",
         })
+        # Print full raw response so we can see exact structure
+        print(f"[DEBUG] GPS stats raw: {json.dumps(data)}", file=sys.stderr)
+
         entries = data.get("data", [])
         if not entries:
+            print("[DEBUG] No entries in GPS stats response", file=sys.stderr)
             return "Unknown"
 
         gps = entries[0].get("gps", {})
-        geofence = gps.get("reverseGeo", {}).get("geofence") or gps.get("geofence")
+        print(f"[DEBUG] GPS field: {json.dumps(gps)}", file=sys.stderr)
 
-        # Some API versions nest it differently — try both
-        if not geofence:
-            # Try the decorations path
-            rev = gps.get("reverseGeo", {})
-            geofence_id = rev.get("geofenceId") or rev.get("id")
-        else:
-            geofence_id = geofence.get("id") if isinstance(geofence, dict) else geofence
+        # Try every known path Samsara uses for geofence ID
+        geofence_id = None
+
+        # Path 1: gps.reverseGeo.geofence.id
+        rev = gps.get("reverseGeo", {})
+        gf  = rev.get("geofence", {})
+        if isinstance(gf, dict):
+            geofence_id = gf.get("id")
+
+        # Path 2: gps.geofence.id
+        if not geofence_id:
+            gf2 = gps.get("geofence", {})
+            if isinstance(gf2, dict):
+                geofence_id = gf2.get("id")
+
+        # Path 3: top-level address on the entry
+        if not geofence_id:
+            addr = entries[0].get("address", {})
+            geofence_id = addr.get("id")
+
+        print(f"[DEBUG] Resolved geofence_id: {geofence_id}", file=sys.stderr)
 
         if not geofence_id:
-            # Not inside any geofence
             if speed_mph is not None and speed_mph > 0.5:
                 return "Driving"
             return "Unknown"
 
         # Look up the address to get its tags
         addr_data = samsara_get(f"/addresses/{geofence_id}")
+        print(f"[DEBUG] Address lookup raw: {json.dumps(addr_data)}", file=sys.stderr)
+
         addr = addr_data.get("data", {})
         tags = addr.get("tags", [])
         tag_names = [t.get("name", "").upper() for t in tags]
-
         print(f"[INFO] Geofence ID: {geofence_id}, tags: {tag_names}")
 
         if "DC" in tag_names:
@@ -205,12 +219,10 @@ def fetch_geofence_status(asset_id, speed_mph):
         if "CUSTOMER" in tag_names:
             return "Unloading"
 
-        # Inside a geofence but no matching tag
         return "Unknown"
 
     except Exception as e:
         print(f"[WARN] Geofence status fetch failed: {e}", file=sys.stderr)
-        # Fall back to speed-based status
         if speed_mph is not None and speed_mph > 0.5:
             return "Driving"
         return "Unknown"
