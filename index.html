@@ -230,6 +230,7 @@
         <div class="legend-item"><div class="legend-dot" style="background:var(--green);"></div>Temp (in range)</div>
         <div class="legend-item"><div class="legend-dot" style="background:var(--red);"></div>Temp (out of range)</div>
         <div class="legend-item"><div class="legend-dot" style="background:#8888bb;"></div>Door</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ff9500;"></div>Motion</div>
       </div>
     </div>
     <div class="graph-scroll-wrapper" id="graphWrapper">
@@ -297,6 +298,7 @@ function applyData(store) {
     ts:        p.ts,
     temp_f:    p.temp_f,
     door_open: p.door_open,
+    moving:    p.speed_mph != null ? p.speed_mph > 0.5 : null,
   }));
 
   drawChart();
@@ -360,7 +362,8 @@ function tempToY(t) {
   const drawH = CHART_H - PAD_TOP - PAD_BOT;
   return PAD_TOP + drawH - ((t - 30) / (55 - 30)) * drawH;
 }
-function doorToY(open) { return open ? PAD_TOP + 10 : CHART_H - PAD_BOT - 10; }
+function doorToY(open)   { return open   ? PAD_TOP + 10  : PAD_TOP + 22; }
+function motionToY(moving) { return moving ? CHART_H - PAD_BOT - 22 : CHART_H - PAD_BOT - 10; }
 function xForIdx(i)    { return PAD_LEFT + i * POINT_W + POINT_W / 2; }
 
 // Build relative time label: "NOW", "-1m", "-2m" etc.
@@ -424,7 +427,7 @@ function drawChart() {
   // Walk right-to-left from NOW, only draw a label if it's at least MIN_GAP px
   // away from the previously drawn label. This prevents all overlap.
   const nowTs    = new Date(chartPoints[n - 1].ts).getTime();
-  const MIN_GAP  = 28;   // minimum pixels between label centers
+  const MIN_GAP  = 42;   // minimum pixels between label centers
   ctx.font = '9px IBM Plex Mono, monospace';
   ctx.textAlign = 'center';
 
@@ -485,6 +488,32 @@ function drawChart() {
     ctx.fillStyle = '#8888bb';
     ctx.fillText('OPEN', PAD_LEFT - 6, doorToY(true) + 3);
     ctx.fillText('CLSD', PAD_LEFT - 6, doorToY(false) + 3);
+  }
+
+  // Speed state machine — Moving / Stopped
+  const hasSpeed = chartPoints.some(p => p.moving != null);
+  if (hasSpeed) {
+    ctx.strokeStyle = '#ff9500'; ctx.lineWidth = 1.5;
+    ctx.setLineDash([2,4]);
+    ctx.beginPath();
+    let startedS = false;
+    for (let i = 0; i < n; i++) {
+      if (chartPoints[i].moving == null) continue;
+      const x = xForIdx(i);
+      const y = motionToY(chartPoints[i].moving);
+      if (!startedS) { ctx.moveTo(x, y); startedS = true; }
+      else {
+        ctx.lineTo(x, motionToY(chartPoints[i-1].moving ?? chartPoints[i].moving));
+        ctx.lineTo(x, y);
+      }
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font = '8px IBM Plex Mono, monospace';
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#ff9500';
+    ctx.fillText('MOV', PAD_LEFT - 6, motionToY(true) + 3);
+    ctx.fillText('STP', PAD_LEFT - 6, motionToY(false) + 3);
   }
 
   // Auto-scroll to right
