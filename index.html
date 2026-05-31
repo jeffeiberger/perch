@@ -326,7 +326,7 @@ function updateStatusCards(pt) {
   const doorEl   = document.getElementById('door-display');
   const doorCard = document.getElementById('door-card');
   if (pt.door_open != null) {
-    doorEl.textContent = pt.door_open ? 'OPEN' : 'CLOSED';
+    doorEl.textContent = pt.door_open ? 'OPEN' : 'CLOSE';
     doorEl.style.color = pt.door_open ? '#ffcc00' : '#00e676';
     doorCard.style.setProperty('--door-accent', pt.door_open ? 'var(--yellow)' : 'var(--green)');
   } else {
