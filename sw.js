@@ -1,6 +1,5 @@
-// ColdChain Monitor — Service Worker
-const CACHE = 'coldchain-v1';
-const PRECACHE = ['/', '/index.html', '/manifest.json'];
+const CACHE = 'coldchain-v2';
+const PRECACHE = ['/', '/index.html', '/manifest.json', '/sw.js'];
 
 self.addEventListener('install', e => {
   e.waitUntil(
@@ -19,12 +18,18 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Network-first for API calls, cache-first for assets
-  if (e.request.url.includes('samsara.com') || e.request.url.includes('fonts.gstatic')) {
-    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
-  } else {
-    e.respondWith(
-      caches.match(e.request).then(cached => cached || fetch(e.request))
-    );
+  // Never cache data.json — always fetch fresh
+  if (e.request.url.includes('data.json')) {
+    e.respondWith(fetch(e.request));
+    return;
   }
+  // Network-first for fonts
+  if (e.request.url.includes('fonts.gstatic')) {
+    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+    return;
+  }
+  // Cache-first for everything else (app shell)
+  e.respondWith(
+    caches.match(e.request).then(cached => cached || fetch(e.request))
+  );
 });
