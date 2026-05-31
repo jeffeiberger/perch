@@ -45,10 +45,11 @@
       border-bottom: 1px solid var(--border);
       padding: 0.5rem 1rem;
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       justify-content: space-between;
       gap: 0.5rem;
-      flex-wrap: wrap;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
     }
     .header-brand { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
     .brand-logo {
@@ -56,39 +57,34 @@
       width: auto;
       object-fit: contain;
       border-radius: 4px;
+      flex-shrink: 0;
     }
-    .brand-text { display: flex; flex-direction: column; gap: 0; }
+    .brand-text { display: flex; flex-direction: column; gap: 0; flex-shrink: 0; }
     .brand-name {
       font-family: var(--font-display); font-weight: 700;
       font-size: 1rem; letter-spacing: 0.1em;
       color: var(--text-primary); text-transform: uppercase;
-      line-height: 1.1;
+      line-height: 1.1; white-space: nowrap;
     }
     .brand-sub {
       font-family: var(--font-mono); font-size: 8px;
       color: var(--text-muted); letter-spacing: 0.15em;
-      text-transform: uppercase;
+      text-transform: uppercase; white-space: nowrap;
     }
     .header-meta {
       display: flex;
-      gap: 0.75rem 1.25rem;
-      flex-wrap: wrap;
-      align-items: flex-start;
-      flex: 1;
-      justify-content: flex-end;
+      gap: 1rem;
+      align-items: center;
+      flex-shrink: 0;
     }
-    .meta-group  { display: flex; flex-direction: column; gap: 1px; }
-    .meta-label  { font-size: 9px; font-family: var(--font-mono); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.15em; white-space: nowrap; }
-    .meta-value  { font-size: 12px; font-family: var(--font-mono); color: var(--text-secondary); letter-spacing: 0.04em; white-space: normal; word-break: break-word; max-width: 120px; line-height: 1.3; }
+    .meta-group  { display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
+    .meta-label  { font-size: 9px; font-family: var(--font-mono); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; white-space: nowrap; }
+    .meta-value  { font-size: 11px; font-family: var(--font-mono); color: var(--text-secondary); letter-spacing: 0.03em; white-space: nowrap; }
     .meta-value.highlight { color: var(--blue); }
     .meta-value.status-loading   { color: #ffcc00; }
     .meta-value.status-unloading { color: #4da6ff; }
     .meta-value.status-driving   { color: #00e676; }
     .meta-value.status-unknown   { color: var(--text-muted); }
-    /* Hide VIN on small screens to make room */
-    @media (max-width: 600px) {
-      .meta-vin { display: none; }
-    }
 
     /* MAIN */
     main {
@@ -192,7 +188,7 @@
       <span class="meta-label">Vehicle</span>
       <span class="meta-value highlight" id="hdr-vehicle">—</span>
     </div>
-    <div class="meta-group meta-vin">
+    <div class="meta-group">
       <span class="meta-label">VIN</span>
       <span class="meta-value" id="hdr-vin">—</span>
     </div>
