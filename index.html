@@ -45,9 +45,9 @@
       border-bottom: 1px solid var(--border);
       padding: 0.5rem 1rem;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: space-between;
-      gap: 0.75rem;
+      gap: 0.5rem;
       flex-wrap: wrap;
     }
     .header-brand { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
@@ -69,15 +69,26 @@
       color: var(--text-muted); letter-spacing: 0.15em;
       text-transform: uppercase;
     }
-    .header-meta { display: flex; gap: 1.25rem; flex-wrap: wrap; align-items: center; }
+    .header-meta {
+      display: flex;
+      gap: 0.75rem 1.25rem;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      flex: 1;
+      justify-content: flex-end;
+    }
     .meta-group  { display: flex; flex-direction: column; gap: 1px; }
-    .meta-label  { font-size: 9px; font-family: var(--font-mono); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.15em; }
+    .meta-label  { font-size: 9px; font-family: var(--font-mono); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.15em; white-space: nowrap; }
     .meta-value  { font-size: 12px; font-family: var(--font-mono); color: var(--text-secondary); letter-spacing: 0.04em; white-space: normal; word-break: break-word; max-width: 120px; line-height: 1.3; }
     .meta-value.highlight { color: var(--blue); }
     .meta-value.status-loading   { color: #ffcc00; }
     .meta-value.status-unloading { color: #4da6ff; }
     .meta-value.status-driving   { color: #00e676; }
     .meta-value.status-unknown   { color: var(--text-muted); }
+    /* Hide VIN on small screens to make room */
+    @media (max-width: 600px) {
+      .meta-vin { display: none; }
+    }
 
     /* MAIN */
     main {
@@ -181,7 +192,7 @@
       <span class="meta-label">Vehicle</span>
       <span class="meta-value highlight" id="hdr-vehicle">—</span>
     </div>
-    <div class="meta-group">
+    <div class="meta-group meta-vin">
       <span class="meta-label">VIN</span>
       <span class="meta-value" id="hdr-vin">—</span>
     </div>
@@ -191,7 +202,7 @@
     </div>
     <div class="meta-group">
       <span class="meta-label">Customer</span>
-      <span class="meta-value highlight">Stater Bros. Grocery</span>
+      <span class="meta-value highlight">Stater Bros.</span>
     </div>
     <div class="meta-group">
       <span class="meta-label">Status</span>
@@ -225,6 +236,14 @@
   </div>
 
   <div class="info-row">
+    <div class="info-pill">
+      <span class="pill-label">Customer</span>
+      Stater Bros. Grocery
+    </div>
+    <div class="info-pill">
+      <span class="pill-label">Status</span>
+      <span id="hdr-status" style="color:var(--text-secondary);">—</span>
+    </div>
     <div class="info-pill" style="flex:1;">
       <span class="pill-label">Goods</span>
       Potatoes, Green Beans, Sweet Potatoes
