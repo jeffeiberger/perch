@@ -133,7 +133,7 @@
     /* GRAPH */
     .graph-section {
       background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: 12px; padding: 0.85rem 1rem; flex: 1;
+      border-radius: 12px; padding: 0.85rem 1rem 0.5rem;
       box-shadow: 0 2px 12px rgba(0,0,0,0.4);
     }
     .graph-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem; flex-wrap: wrap; gap: 0.5rem; }
@@ -173,6 +173,13 @@
     }
     .footer-text { font-size: 10px; font-family: var(--font-mono); color: var(--text-muted); letter-spacing: 0.06em; }
     .update-time { font-size: 10px; font-family: var(--font-mono); color: var(--text-muted); }
+    #debug-btn {
+      font-family: var(--font-mono); font-size: 9px; text-transform: uppercase;
+      letter-spacing: 0.12em; color: var(--text-muted);
+      background: none; border: 1px solid var(--border);
+      border-radius: 4px; padding: 3px 8px; cursor: pointer;
+    }
+    #debug-btn:hover { color: var(--blue); border-color: var(--blue-dim); }
 
     @media (max-width: 420px) {
       .status-card-value { font-size: 1.8rem; }
@@ -192,14 +199,13 @@
         <span class="brand-sub">by Parliament Trucking</span>
       </div>
     </div>
-    <div class="header-divider"></div>
+  </div>
+  <!-- Row 2: Vehicle, Driver, Customer, Status -->
+  <div class="header-row">
     <div class="meta-group">
       <span class="meta-label">Vehicle</span>
       <span class="meta-value highlight" id="hdr-vehicle">—</span>
     </div>
-  </div>
-  <!-- Row 2: Driver, Customer, Status -->
-  <div class="header-row">
     <div class="meta-group">
       <span class="meta-label">Driver</span>
       <span class="meta-value" id="hdr-driver">—</span>
@@ -261,10 +267,6 @@
       </div>
       <canvas id="overlayCanvas" width="50" height="240"></canvas>
     </div>
-    <div class="threshold-annotation">
-      <div class="threshold-item"><div class="threshold-line" style="border-color:var(--red);"></div>40°F lower</div>
-      <div class="threshold-item"><div class="threshold-line" style="border-color:var(--red);"></div>45°F upper</div>
-    </div>
   </div>
 
 </main>
@@ -272,7 +274,19 @@
 <footer>
   <span class="footer-text">Samsara Fleet API · Parliament Trucking</span>
   <span class="update-time" id="footer-time">—</span>
+  <button id="debug-btn" onclick="document.getElementById('debug-modal').style.display='flex'">Debug</button>
 </footer>
+
+<!-- DEBUG MODAL -->
+<div id="debug-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:999; align-items:center; justify-content:center; padding:1rem;">
+  <div style="background:#0e1528; border:1px solid #2a4070; border-radius:12px; width:100%; max-width:700px; max-height:85vh; display:flex; flex-direction:column; overflow:hidden;">
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1rem; border-bottom:1px solid #1e2d4a;">
+      <span style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:#7a8fb0; text-transform:uppercase; letter-spacing:0.15em;">Debug · Latest API Response</span>
+      <button onclick="document.getElementById('debug-modal').style.display='none'" style="background:none; border:none; color:#7a8fb0; font-size:18px; cursor:pointer; line-height:1;">✕</button>
+    </div>
+    <pre id="debug-content" style="flex:1; overflow:auto; padding:1rem; font-family:'IBM Plex Mono',monospace; font-size:10px; color:#a0c4ff; white-space:pre-wrap; word-break:break-all; margin:0;">No data yet.</pre>
+  </div>
+</div>
 
 <script>
 const DATA_URL   = './data.json';
@@ -310,17 +324,29 @@ function applyData(store) {
   document.getElementById('hdr-vehicle').textContent = v.name || '—';
   document.getElementById('hdr-driver').textContent  = d.name || '—';
 
+  // Debug panel — show full latest store
+  const debugEl = document.getElementById('debug-content');
+  if (debugEl) debugEl.textContent = JSON.stringify(store, null, 2);
+
   const points = store.points || [];
   if (!points.length) return;
 
   const latest = points[points.length - 1];
   updateStatusCards(latest);
 
-  // Status badge in header — use latest point's status
+  // If all three tiles are N/A, set status to N/A orange
+  const gatewayAsleep = (latest.speed_mph == null && latest.door_open == null);
   const statusEl = document.getElementById('hdr-status');
   const status   = (latest.status && latest.status !== 'null') ? latest.status : '—';
-  statusEl.textContent = status;
-  statusEl.className   = 'meta-value status-' + (status !== '—' ? status.toLowerCase() : 'unknown');
+  if (gatewayAsleep) {
+    statusEl.textContent = 'N/A';
+    statusEl.className   = 'meta-value status-unknown';
+    statusEl.style.color = '#ff9500';
+  } else {
+    statusEl.textContent = status;
+    statusEl.className   = 'meta-value status-' + (status !== '—' ? status.toLowerCase() : 'unknown');
+    statusEl.style.color = '';
+  }
 
   const latestTime = new Date(latest.ts);
   const ageMs = Date.now() - latestTime.getTime();
