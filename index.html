@@ -150,6 +150,17 @@
     .graph-scroll-wrapper::-webkit-scrollbar-track { background: var(--bg-panel); border-radius: 2px; }
     .graph-scroll-wrapper::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 2px; }
     canvas#chartCanvas { display: block; }
+    /* Container holds scrollable chart + fixed overlay side by side */
+    .graph-chart-container {
+      position: relative;
+      display: flex;
+    }
+    .graph-scroll-wrapper { flex: 1; min-width: 0; }
+    canvas#overlayCanvas {
+      display: block;
+      flex-shrink: 0;
+      background: #131c32;
+    }
     .threshold-annotation { display: flex; gap: 1.5rem; margin-top: 0.4rem; flex-wrap: wrap; }
     .threshold-item { display: flex; align-items: center; gap: 5px; font-size: 10px; font-family: var(--font-mono); color: var(--text-muted); }
     .threshold-line { width: 16px; height: 1px; border-top: 1px dashed; }
@@ -248,7 +259,7 @@
       <div class="graph-scroll-wrapper" id="graphWrapper">
         <canvas id="chartCanvas" height="240"></canvas>
       </div>
-      <canvas id="overlayCanvas" height="240"></canvas>
+      <canvas id="overlayCanvas" width="50" height="240"></canvas>
     </div>
     <div class="threshold-annotation">
       <div class="threshold-item"><div class="threshold-line" style="border-color:var(--red);"></div>40°F lower</div>
@@ -272,15 +283,18 @@ const STALE_MS   = 3 * 60 * 1000;
 
 const POINT_W   = 14;
 const CHART_H   = 240;
-const PAD_LEFT  = 8;    // no labels on left anymore
-const PAD_RIGHT = 46;   // labels now live on the right
+const PAD_LEFT  = 8;
+const PAD_RIGHT = 4;    // minimal — labels on fixed overlay
 const PAD_TOP   = 18;
 const PAD_BOT   = 36;
+const OVERLAY_W = 50;
 
 let chartPoints = [];
 
 const canvas  = document.getElementById('chartCanvas');
 const ctx     = canvas.getContext('2d');
+const overlay = document.getElementById('overlayCanvas');
+const octx    = overlay.getContext('2d');
 const wrapper = document.getElementById('graphWrapper');
 
 // ── DATA FETCH ────────────────────────────────────────────────────────────
@@ -426,7 +440,7 @@ function relativeLabel(ts, nowTs) {
 }
 
 function drawChart() {
-  computeYScale();   // auto-fit Y range to current data
+  computeYScale();
 
   const W = getChartW();
   canvas.width  = W;
@@ -436,43 +450,32 @@ function drawChart() {
   ctx.fillStyle = '#131c32';
   ctx.fillRect(0, 0, W, CHART_H);
 
-  // In-range band (only draw if threshold lines are within visible range)
+  // In-range band
   if (TEMP_LOW >= yMin && TEMP_HIGH <= yMax) {
     ctx.fillStyle = 'rgba(0,230,118,0.04)';
-    ctx.fillRect(PAD_LEFT, tempToY(TEMP_HIGH), W - PAD_LEFT - PAD_RIGHT, tempToY(TEMP_LOW) - tempToY(TEMP_HIGH));
+    ctx.fillRect(PAD_LEFT, tempToY(TEMP_HIGH), W, tempToY(TEMP_LOW) - tempToY(TEMP_HIGH));
   }
 
-  // Threshold lines
+  // Threshold lines — full width, no label (label is on overlay)
   [TEMP_LOW, TEMP_HIGH].forEach(t => {
     const y = tempToY(t);
     ctx.setLineDash([4,4]);
     ctx.strokeStyle = 'rgba(255,100,100,0.7)';
     ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(PAD_LEFT, y); ctx.lineTo(W - PAD_RIGHT, y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(PAD_LEFT, y); ctx.lineTo(W, y); ctx.stroke();
     ctx.setLineDash([]);
-    ctx.fillStyle = 'rgba(255,100,100,0.9)';
-    ctx.font = '9px IBM Plex Mono, monospace';
-    ctx.textAlign = 'left';
-    ctx.fillText(t + '°F', W - PAD_RIGHT + 4, y + 3);
   });
 
-  // Y-axis grid + labels — step size based on visible span
-  const span     = yMax - yMin;
-  const gridStep = span <= 15 ? 1 : span <= 25 ? 2 : span <= 40 ? 5 : 10;
+  // Y-axis grid lines — no labels (on overlay)
+  const span      = yMax - yMin;
+  const gridStep  = span <= 15 ? 1 : span <= 25 ? 2 : span <= 40 ? 5 : 10;
   const gridStart = Math.ceil(yMin / gridStep) * gridStep;
   for (let t = gridStart; t <= yMax; t += gridStep) {
     const y = tempToY(t);
     ctx.strokeStyle = '#2a3d5e'; ctx.lineWidth = 0.5;
     ctx.setLineDash([2,4]);
-    ctx.beginPath(); ctx.moveTo(PAD_LEFT, y); ctx.lineTo(W - PAD_RIGHT, y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(PAD_LEFT, y); ctx.lineTo(W, y); ctx.stroke();
     ctx.setLineDash([]);
-    // Don't overdraw threshold labels
-    if (t !== TEMP_LOW && t !== TEMP_HIGH) {
-      ctx.fillStyle = '#5a7090';
-      ctx.font = '9px IBM Plex Mono, monospace';
-      ctx.textAlign = 'left';
-      ctx.fillText(t + '°', W - PAD_RIGHT + 4, y + 3);
-    }
   }
 
   const n = chartPoints.length;
@@ -548,11 +551,6 @@ function drawChart() {
     }
     ctx.stroke();
     ctx.setLineDash([]);
-    ctx.font = '8px IBM Plex Mono, monospace';
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#aaaadd';
-    ctx.fillText('OPEN', W - PAD_RIGHT + 4, doorToY(true) + 3);
-    ctx.fillText('CLSD', W - PAD_RIGHT + 4, doorToY(false) + 3);
   }
 
   // Speed state machine — Moving / Stopped
@@ -574,15 +572,59 @@ function drawChart() {
     }
     ctx.stroke();
     ctx.setLineDash([]);
-    ctx.font = '8px IBM Plex Mono, monospace';
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#ffaa22';
-    ctx.fillText('MOV', W - PAD_RIGHT + 4, motionToY(true) + 3);
-    ctx.fillText('STP', W - PAD_RIGHT + 4, motionToY(false) + 3);
   }
 
   // Auto-scroll to right
   wrapper.scrollLeft = W;
+  drawOverlay();
+}
+
+// ── OVERLAY — fixed right-side labels, never scrolls ─────────────────────
+function drawOverlay() {
+  const W = OVERLAY_W;
+  overlay.width  = W;
+  overlay.height = CHART_H;
+  octx.clearRect(0, 0, W, CHART_H);
+
+  octx.fillStyle = '#131c32';
+  octx.fillRect(0, 0, W, CHART_H);
+
+  // Left border line to visually separate from chart
+  octx.strokeStyle = '#2a3d5e';
+  octx.lineWidth = 1;
+  octx.beginPath(); octx.moveTo(0, 0); octx.lineTo(0, CHART_H); octx.stroke();
+
+  octx.font = '9px IBM Plex Mono, monospace';
+  octx.textAlign = 'left';
+
+  // Threshold labels
+  [TEMP_LOW, TEMP_HIGH].forEach(t => {
+    const y = tempToY(t);
+    octx.fillStyle = 'rgba(255,100,100,0.9)';
+    octx.fillText(t + '°F', 5, y + 3);
+  });
+
+  // Y-axis grid labels
+  const span      = yMax - yMin;
+  const gridStep  = span <= 15 ? 1 : span <= 25 ? 2 : span <= 40 ? 5 : 10;
+  const gridStart = Math.ceil(yMin / gridStep) * gridStep;
+  for (let t = gridStart; t <= yMax; t += gridStep) {
+    if (t === TEMP_LOW || t === TEMP_HIGH) continue;
+    const y = tempToY(t);
+    octx.fillStyle = '#5a7090';
+    octx.fillText(t + '°', 5, y + 3);
+  }
+
+  // Door state labels
+  octx.fillStyle = '#aaaadd';
+  octx.font = '8px IBM Plex Mono, monospace';
+  octx.fillText('OPEN', 5, doorToY(true) + 3);
+  octx.fillText('CLSD', 5, doorToY(false) + 3);
+
+  // Motion state labels
+  octx.fillStyle = '#ffaa22';
+  octx.fillText('MOV', 5, motionToY(true) + 3);
+  octx.fillText('STP', 5, motionToY(false) + 3);
 }
 
 // ── POLL LOOP ─────────────────────────────────────────────────────────────
@@ -596,7 +638,7 @@ setInterval(poll, POLL_MS);
 let resizeTimer;
 window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(drawChart, 100);
+  resizeTimer = setTimeout(() => { drawChart(); drawOverlay(); }, 100);
 });
 
 let isDragging = false, startX, scrollStart;
