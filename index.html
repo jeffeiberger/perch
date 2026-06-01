@@ -101,9 +101,13 @@
     .status-card.glow-green  { box-shadow: 0 2px 12px rgba(0,0,0,0.4), 0 0 14px rgba(0,230,118,0.25); }
     .status-card.glow-red    { box-shadow: 0 2px 12px rgba(0,0,0,0.4), 0 0 14px rgba(255,68,68,0.25); }
     .status-card.glow-yellow { box-shadow: 0 2px 12px rgba(0,0,0,0.4), 0 0 14px rgba(255,204,0,0.25); }
-    .status-card-label { font-size: 9px; font-family: var(--font-mono); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.18em; }
-    .status-card-value { font-family: var(--font-display); font-size: 2.2rem; font-weight: 700; line-height: 1; letter-spacing: 0.02em; transition: color 0.4s ease; }
-    .status-card-sub   { font-size: 9px; font-family: var(--font-mono); color: var(--text-muted); letter-spacing: 0.08em; }
+    .status-card.glow-orange { box-shadow: 0 2px 12px rgba(0,0,0,0.4), 0 0 14px rgba(255,150,0,0.3); }
+    .status-card.temp.glow-orange::before   { background: #ff9500; }
+    .status-card.door.glow-orange::before   { background: #ff9500; }
+    .status-card.motion.glow-orange::before { background: #ff9500; }
+    .status-card-label { font-size: 9px; font-family: var(--font-mono); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.18em; text-align: center; }
+    .status-card-value { font-family: var(--font-display); font-size: 2.2rem; font-weight: 700; line-height: 1; letter-spacing: 0.02em; transition: color 0.4s ease; text-align: center; }
+    .status-card-sub   { font-size: 9px; font-family: var(--font-mono); color: var(--text-muted); letter-spacing: 0.08em; text-align: center; }
 
     /* INFO ROW */
     .info-row { display: flex; gap: 1rem; align-items: stretch; }
@@ -233,12 +237,11 @@
 
   <div class="graph-section">
     <div class="graph-header">
-      <span class="graph-title">Live Telemetry · Temperature &amp; Door State</span>
       <div class="graph-legend">
         <div class="legend-item"><div class="legend-dot" style="background:var(--green);"></div>Temp (in range)</div>
         <div class="legend-item"><div class="legend-dot" style="background:var(--red);"></div>Temp (out of range)</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#8888bb;"></div>Door</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#ff9500;"></div>Motion</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#aaaadd;"></div>Door</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ffaa22;"></div>Motion</div>
       </div>
     </div>
     <div class="graph-chart-container">
@@ -315,6 +318,7 @@ function applyData(store) {
     temp_f:    p.temp_f,
     door_open: p.door_open,
     moving:    p.speed_mph != null ? p.speed_mph > 0.5 : null,
+    speed_mph: p.speed_mph,
   }));
 
   drawChart();
@@ -325,10 +329,14 @@ function applyData(store) {
 
 // ── STATUS CARDS ──────────────────────────────────────────────────────────
 function updateStatusCards(pt) {
+  // Deep sleep detection: if both speed and door are null, gateway is asleep.
+  // Treat temperature as unreliable (cached) and show N/A.
+  const gatewayAsleep = (pt.speed_mph == null && pt.door_open == null);
+
   // Temperature
   const tempEl   = document.getElementById('temp-display');
   const tempCard = document.getElementById('temp-card');
-  if (pt.temp_f != null) {
+  if (!gatewayAsleep && pt.temp_f != null) {
     const inRange = pt.temp_f >= TEMP_LOW && pt.temp_f <= TEMP_HIGH;
     tempEl.textContent = pt.temp_f.toFixed(1) + '°F';
     tempEl.style.color = inRange ? '#00e676' : '#ff4444';
@@ -336,8 +344,9 @@ function updateStatusCards(pt) {
     tempCard.className = 'status-card temp ' + (inRange ? 'glow-green' : 'glow-red');
   } else {
     tempEl.textContent = 'N/A';
-    tempEl.style.color = 'var(--text-muted)';
-    tempCard.className = 'status-card temp';
+    tempEl.style.color = '#ff9500';
+    tempCard.style.setProperty('--temp-accent', '#ff9500');
+    tempCard.className = 'status-card temp glow-orange';
   }
 
   // Door
@@ -350,8 +359,9 @@ function updateStatusCards(pt) {
     doorCard.className = 'status-card door ' + (pt.door_open ? 'glow-yellow' : 'glow-green');
   } else {
     doorEl.textContent = 'N/A';
-    doorEl.style.color = 'var(--text-muted)';
-    doorCard.className = 'status-card door';
+    doorEl.style.color = '#ff9500';
+    doorCard.style.setProperty('--door-accent', '#ff9500');
+    doorCard.className = 'status-card door glow-orange';
   }
 
   // Motion / Speed
@@ -367,9 +377,10 @@ function updateStatusCards(pt) {
     motionCard.className = 'status-card motion ' + (moving ? 'glow-green' : '');
   } else {
     motionEl.textContent = 'N/A';
-    motionEl.style.color = 'var(--text-muted)';
+    motionEl.style.color = '#ff9500';
     motionSub.textContent = 'Speed (MPH)';
-    motionCard.className = 'status-card motion';
+    motionCard.style.setProperty('--motion-accent', '#ff9500');
+    motionCard.className = 'status-card motion glow-orange';
   }
 }
 
@@ -501,10 +512,14 @@ function drawChart() {
     }
   }
 
-  // Temperature line
+  // Temperature line — skip segments where gateway was asleep (speed+door both null = cached/unreliable)
   ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   for (let i = 1; i < n; i++) {
-    const t0 = chartPoints[i-1].temp_f, t1 = chartPoints[i].temp_f;
+    const p0 = chartPoints[i-1], p1 = chartPoints[i];
+    const asleep0 = p0.speed_mph == null && p0.door_open == null;
+    const asleep1 = p1.speed_mph == null && p1.door_open == null;
+    if (asleep0 || asleep1) continue;
+    const t0 = p0.temp_f, t1 = p1.temp_f;
     if (t0 == null || t1 == null) continue;
     const inRange = t0 >= TEMP_LOW && t0 <= TEMP_HIGH && t1 >= TEMP_LOW && t1 <= TEMP_HIGH;
     ctx.strokeStyle = inRange ? '#00e676' : '#ff4444';
