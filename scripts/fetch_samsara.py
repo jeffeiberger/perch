@@ -249,6 +249,18 @@ def main():
     if len(store["points"]) > MAX_POINTS:
         store["points"] = store["points"][-MAX_POINTS:]
 
+    # Debug info — latest raw values for the PWA debug panel
+    store["debug"] = {
+        "fetched_at":  now_iso,
+        "vehicle_id":  VEHICLE_ID,
+        "temp_f":      temp_f,
+        "speed_mph":   speed_mph,
+        "door_open":   door_open,
+        "status":      status,
+        "driver":      store.get("driver", {}),
+        "vehicle":     store.get("vehicle", {}),
+    }
+
     save_data_file(store)
     print(f"[OK] Appended: {point}")
     print(f"[OK] Total points: {len(store['points'])}")
