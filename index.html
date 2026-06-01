@@ -363,9 +363,27 @@ function getChartW() {
     chartPoints.length * POINT_W + PAD_LEFT + PAD_RIGHT + 40
   );
 }
+// Dynamic Y scale — recomputed each draw based on visible data
+let yMin = 30, yMax = 55;
+
+function computeYScale() {
+  const temps = chartPoints.map(p => p.temp_f).filter(t => t != null);
+  if (!temps.length) { yMin = 38; yMax = 47; return; }
+  const dataMin = Math.min(...temps);
+  const dataMax = Math.max(...temps);
+  const lo = Math.min(dataMin, TEMP_LOW);
+  const hi = Math.max(dataMax, TEMP_HIGH);
+  const span = hi - lo;
+  const pad  = Math.max(span * 0.10, 2); // 10% padding, minimum 2°
+  // Round to nearest 1° for small spans, 5° for large
+  const roundTo = span <= 20 ? 1 : 5;
+  yMin = Math.floor((lo - pad) / roundTo) * roundTo;
+  yMax = Math.ceil((hi + pad) / roundTo) * roundTo;
+}
+
 function tempToY(t) {
   const drawH = CHART_H - PAD_TOP - PAD_BOT;
-  return PAD_TOP + drawH - ((t - 30) / (55 - 30)) * drawH;
+  return PAD_TOP + drawH - ((t - yMin) / (yMax - yMin)) * drawH;
 }
 function doorToY(open)   { return open   ? PAD_TOP + 10  : PAD_TOP + 22; }
 function motionToY(moving) { return moving ? CHART_H - PAD_BOT - 22 : CHART_H - PAD_BOT - 10; }
@@ -380,6 +398,8 @@ function relativeLabel(ts, nowTs) {
 }
 
 function drawChart() {
+  computeYScale();   // auto-fit Y range to current data
+
   const W = getChartW();
   canvas.width  = W;
   canvas.height = CHART_H;
@@ -388,9 +408,11 @@ function drawChart() {
   ctx.fillStyle = '#131c32';
   ctx.fillRect(0, 0, W, CHART_H);
 
-  // In-range band
-  ctx.fillStyle = 'rgba(0,230,118,0.04)';
-  ctx.fillRect(PAD_LEFT, tempToY(TEMP_HIGH), W - PAD_LEFT - PAD_RIGHT, tempToY(TEMP_LOW) - tempToY(TEMP_HIGH));
+  // In-range band (only draw if threshold lines are within visible range)
+  if (TEMP_LOW >= yMin && TEMP_HIGH <= yMax) {
+    ctx.fillStyle = 'rgba(0,230,118,0.04)';
+    ctx.fillRect(PAD_LEFT, tempToY(TEMP_HIGH), W - PAD_LEFT - PAD_RIGHT, tempToY(TEMP_LOW) - tempToY(TEMP_HIGH));
+  }
 
   // Threshold lines
   [TEMP_LOW, TEMP_HIGH].forEach(t => {
@@ -406,17 +428,23 @@ function drawChart() {
     ctx.fillText(t + '°F', W - PAD_RIGHT + 4, y + 3);
   });
 
-  // Y-axis grid + labels on RIGHT
-  for (let t = 30; t <= 55; t += 5) {
+  // Y-axis grid + labels — step size based on visible span
+  const span     = yMax - yMin;
+  const gridStep = span <= 15 ? 1 : span <= 25 ? 2 : span <= 40 ? 5 : 10;
+  const gridStart = Math.ceil(yMin / gridStep) * gridStep;
+  for (let t = gridStart; t <= yMax; t += gridStep) {
     const y = tempToY(t);
     ctx.strokeStyle = '#1e2d4a'; ctx.lineWidth = 0.5;
     ctx.setLineDash([2,4]);
     ctx.beginPath(); ctx.moveTo(PAD_LEFT, y); ctx.lineTo(W - PAD_RIGHT, y); ctx.stroke();
     ctx.setLineDash([]);
-    ctx.fillStyle = '#3d5070';
-    ctx.font = '9px IBM Plex Mono, monospace';
-    ctx.textAlign = 'left';
-    ctx.fillText(t + '°', W - PAD_RIGHT + 4, y + 3);
+    // Don't overdraw threshold labels
+    if (t !== TEMP_LOW && t !== TEMP_HIGH) {
+      ctx.fillStyle = '#3d5070';
+      ctx.font = '9px IBM Plex Mono, monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(t + '°', W - PAD_RIGHT + 4, y + 3);
+    }
   }
 
   const n = chartPoints.length;
