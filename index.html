@@ -65,7 +65,7 @@
     .header-meta { display: flex; gap: 1rem; align-items: center; flex-shrink: 0; }
     .meta-group  { display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
     .meta-label  { font-size: 9px; font-family: var(--font-mono); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.12em; }
-    .meta-value  { font-size: 11px; font-family: var(--font-mono); color: var(--text-secondary); letter-spacing: 0.03em; }
+    .meta-value  { font-size: 11px; font-family: var(--font-mono); color: var(--blue); letter-spacing: 0.03em; }
     .meta-value.highlight { color: var(--blue); }
     .meta-value.status-loading   { color: #ffcc00; }
     .meta-value.status-unloading { color: #4da6ff; }
@@ -87,6 +87,8 @@
       border-radius: 12px; padding: 0.9rem 1rem;
       display: flex; flex-direction: column; gap: 0.3rem;
       position: relative; overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.4), 0 0 0 0 transparent;
+      transition: box-shadow 0.4s ease;
     }
     .status-card::before {
       content: ''; position: absolute;
@@ -95,6 +97,10 @@
     .status-card.temp::before   { background: var(--temp-accent, var(--green)); }
     .status-card.door::before   { background: var(--door-accent, var(--green)); }
     .status-card.motion::before { background: var(--motion-accent, var(--text-muted)); }
+    /* Colorized glow applied via JS when status is set */
+    .status-card.glow-green  { box-shadow: 0 2px 12px rgba(0,0,0,0.4), 0 0 14px rgba(0,230,118,0.25); }
+    .status-card.glow-red    { box-shadow: 0 2px 12px rgba(0,0,0,0.4), 0 0 14px rgba(255,68,68,0.25); }
+    .status-card.glow-yellow { box-shadow: 0 2px 12px rgba(0,0,0,0.4), 0 0 14px rgba(255,204,0,0.25); }
     .status-card-label { font-size: 9px; font-family: var(--font-mono); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.18em; }
     .status-card-value { font-family: var(--font-display); font-size: 2.2rem; font-weight: 700; line-height: 1; letter-spacing: 0.02em; transition: color 0.4s ease; }
     .status-card-sub   { font-size: 9px; font-family: var(--font-mono); color: var(--text-muted); letter-spacing: 0.08em; }
@@ -104,8 +110,9 @@
     .info-pill {
       background: var(--bg-card); border: 1px solid var(--border);
       border-radius: 8px; padding: 0.5rem 0.9rem;
-      font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary);
+      font-family: var(--font-mono); font-size: 11px; color: var(--blue);
       display: flex; align-items: center; gap: 0.5rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     }
     .info-pill .pill-label { color: var(--text-muted); font-size: 9px; text-transform: uppercase; letter-spacing: 0.15em; flex-shrink: 0; }
 
@@ -123,11 +130,12 @@
     .graph-section {
       background: var(--bg-card); border: 1px solid var(--border);
       border-radius: 12px; padding: 0.85rem 1rem; flex: 1;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.4);
     }
     .graph-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem; flex-wrap: wrap; gap: 0.5rem; }
     .graph-title  { font-family: var(--font-display); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.2em; color: var(--text-secondary); }
     .graph-legend { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
-    .legend-item  { display: flex; align-items: center; gap: 5px; font-size: 10px; font-family: var(--font-mono); color: var(--text-muted); }
+    .legend-item  { display: flex; align-items: center; gap: 5px; font-size: 10px; font-family: var(--font-mono); color: var(--text-secondary); }
     .legend-dot   { width: 16px; height: 2px; border-radius: 1px; }
     .graph-scroll-wrapper {
       overflow-x: auto; overflow-y: hidden;
@@ -233,8 +241,11 @@
         <div class="legend-item"><div class="legend-dot" style="background:#ff9500;"></div>Motion</div>
       </div>
     </div>
-    <div class="graph-scroll-wrapper" id="graphWrapper">
-      <canvas id="chartCanvas" height="240"></canvas>
+    <div class="graph-chart-container">
+      <div class="graph-scroll-wrapper" id="graphWrapper">
+        <canvas id="chartCanvas" height="240"></canvas>
+      </div>
+      <canvas id="overlayCanvas" height="240"></canvas>
     </div>
     <div class="threshold-annotation">
       <div class="threshold-item"><div class="threshold-line" style="border-color:var(--red);"></div>40°F lower</div>
@@ -322,9 +333,11 @@ function updateStatusCards(pt) {
     tempEl.textContent = pt.temp_f.toFixed(1) + '°F';
     tempEl.style.color = inRange ? '#00e676' : '#ff4444';
     tempCard.style.setProperty('--temp-accent', inRange ? 'var(--green)' : 'var(--red)');
+    tempCard.className = 'status-card temp ' + (inRange ? 'glow-green' : 'glow-red');
   } else {
     tempEl.textContent = 'N/A';
     tempEl.style.color = 'var(--text-muted)';
+    tempCard.className = 'status-card temp';
   }
 
   // Door
@@ -334,9 +347,11 @@ function updateStatusCards(pt) {
     doorEl.textContent = pt.door_open ? 'OPEN' : 'CLOSED';
     doorEl.style.color = pt.door_open ? '#ffcc00' : '#00e676';
     doorCard.style.setProperty('--door-accent', pt.door_open ? 'var(--yellow)' : 'var(--green)');
+    doorCard.className = 'status-card door ' + (pt.door_open ? 'glow-yellow' : 'glow-green');
   } else {
     doorEl.textContent = 'N/A';
     doorEl.style.color = 'var(--text-muted)';
+    doorCard.className = 'status-card door';
   }
 
   // Motion / Speed
@@ -349,10 +364,12 @@ function updateStatusCards(pt) {
     motionEl.style.color = moving ? '#00e676' : '#7a8fb0';
     motionSub.textContent = pt.speed_mph.toFixed(1) + ' MPH';
     motionCard.style.setProperty('--motion-accent', moving ? 'var(--green)' : 'var(--text-muted)');
+    motionCard.className = 'status-card motion ' + (moving ? 'glow-green' : '');
   } else {
     motionEl.textContent = 'N/A';
     motionEl.style.color = 'var(--text-muted)';
     motionSub.textContent = 'Speed (MPH)';
+    motionCard.className = 'status-card motion';
   }
 }
 
@@ -418,11 +435,11 @@ function drawChart() {
   [TEMP_LOW, TEMP_HIGH].forEach(t => {
     const y = tempToY(t);
     ctx.setLineDash([4,4]);
-    ctx.strokeStyle = 'rgba(255,68,68,0.5)';
+    ctx.strokeStyle = 'rgba(255,100,100,0.7)';
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(PAD_LEFT, y); ctx.lineTo(W - PAD_RIGHT, y); ctx.stroke();
     ctx.setLineDash([]);
-    ctx.fillStyle = 'rgba(255,68,68,0.7)';
+    ctx.fillStyle = 'rgba(255,100,100,0.9)';
     ctx.font = '9px IBM Plex Mono, monospace';
     ctx.textAlign = 'left';
     ctx.fillText(t + '°F', W - PAD_RIGHT + 4, y + 3);
@@ -434,13 +451,13 @@ function drawChart() {
   const gridStart = Math.ceil(yMin / gridStep) * gridStep;
   for (let t = gridStart; t <= yMax; t += gridStep) {
     const y = tempToY(t);
-    ctx.strokeStyle = '#1e2d4a'; ctx.lineWidth = 0.5;
+    ctx.strokeStyle = '#2a3d5e'; ctx.lineWidth = 0.5;
     ctx.setLineDash([2,4]);
     ctx.beginPath(); ctx.moveTo(PAD_LEFT, y); ctx.lineTo(W - PAD_RIGHT, y); ctx.stroke();
     ctx.setLineDash([]);
     // Don't overdraw threshold labels
     if (t !== TEMP_LOW && t !== TEMP_HIGH) {
-      ctx.fillStyle = '#3d5070';
+      ctx.fillStyle = '#5a7090';
       ctx.font = '9px IBM Plex Mono, monospace';
       ctx.textAlign = 'left';
       ctx.fillText(t + '°', W - PAD_RIGHT + 4, y + 3);
@@ -477,7 +494,7 @@ function drawChart() {
     if ((diffMin === 0 || diffMin % 1 === 0) && !labeledMinutes.has(diffMin)) {
       if (lastDrawnX - x >= MIN_GAP) {
         labeledMinutes.add(diffMin);
-        ctx.fillStyle = diffMin === 0 ? '#7a8fb0' : '#3d5070';
+        ctx.fillStyle = diffMin === 0 ? '#a0b4cc' : '#5a7090';
         ctx.fillText(label, x, CHART_H - 4);
         lastDrawnX = x;
       }
@@ -500,7 +517,7 @@ function drawChart() {
   // Door state step function
   const hasDoor = chartPoints.some(p => p.door_open != null);
   if (hasDoor) {
-    ctx.strokeStyle = '#8888bb'; ctx.lineWidth = 1.5;
+    ctx.strokeStyle = '#aaaadd'; ctx.lineWidth = 1.5;
     ctx.setLineDash([3,3]);
     ctx.beginPath();
     let started = false;
@@ -518,7 +535,7 @@ function drawChart() {
     ctx.setLineDash([]);
     ctx.font = '8px IBM Plex Mono, monospace';
     ctx.textAlign = 'left';
-    ctx.fillStyle = '#8888bb';
+    ctx.fillStyle = '#aaaadd';
     ctx.fillText('OPEN', W - PAD_RIGHT + 4, doorToY(true) + 3);
     ctx.fillText('CLSD', W - PAD_RIGHT + 4, doorToY(false) + 3);
   }
@@ -526,7 +543,7 @@ function drawChart() {
   // Speed state machine — Moving / Stopped
   const hasSpeed = chartPoints.some(p => p.moving != null);
   if (hasSpeed) {
-    ctx.strokeStyle = '#ff9500'; ctx.lineWidth = 1.5;
+    ctx.strokeStyle = '#ffaa22'; ctx.lineWidth = 1.5;
     ctx.setLineDash([2,4]);
     ctx.beginPath();
     let startedS = false;
@@ -544,7 +561,7 @@ function drawChart() {
     ctx.setLineDash([]);
     ctx.font = '8px IBM Plex Mono, monospace';
     ctx.textAlign = 'left';
-    ctx.fillStyle = '#ff9500';
+    ctx.fillStyle = '#ffaa22';
     ctx.fillText('MOV', W - PAD_RIGHT + 4, motionToY(true) + 3);
     ctx.fillText('STP', W - PAD_RIGHT + 4, motionToY(false) + 3);
   }
