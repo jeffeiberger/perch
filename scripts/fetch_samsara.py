@@ -85,7 +85,7 @@ def save_data_file(data):
 
 def fetch_latest_reading(reading_id, entity_type, entity_id):
     end_time   = datetime.now(timezone.utc)
-    start_time = end_time - timedelta(minutes=5)
+    start_time = end_time - timedelta(minutes=30)
     params = {
         "readingId":  reading_id,
         "entityType": entity_type,
@@ -95,11 +95,13 @@ def fetch_latest_reading(reading_id, entity_type, entity_id):
     }
     data = samsara_get("/readings/history", params)
     rows = data.get("data", [])
+    if not rows:
+        print(f"[WARN] No readings found for {reading_id} in last 30 min", file=sys.stderr)
     return rows[-1].get("value") if rows else None
 
 def fetch_latest_temperature(sensor_id):
     end_time   = datetime.now(timezone.utc)
-    start_time = end_time - timedelta(minutes=5)
+    start_time = end_time - timedelta(minutes=30)
     body = {
         "startMs":     int(start_time.timestamp() * 1000),
         "endMs":       int(end_time.timestamp() * 1000),
