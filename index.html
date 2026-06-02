@@ -673,8 +673,11 @@ wrapper.addEventListener('mousedown', e => { isDragging = true; startX = e.pageX
 window.addEventListener('mousemove', e => { if (isDragging) wrapper.scrollLeft = scrollStart - (e.pageX - startX); });
 window.addEventListener('mouseup',   () => { isDragging = false; });
 
+// Unregister any existing service workers — they cause stale cache issues
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').catch(() => {});
+  navigator.serviceWorker.getRegistrations().then(registrations => {
+    registrations.forEach(r => r.unregister());
+  });
 }
 </script>
 </body>
