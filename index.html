@@ -50,16 +50,17 @@
     }
     .header-row { display: flex; align-items: center; gap: 1rem; flex-wrap: nowrap; }
     .header-brand { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
-    .brand-logo { height: 34px; width: auto; object-fit: contain; border-radius: 4px; flex-shrink: 0; }
-    .brand-text { display: flex; flex-direction: column; gap: 0; flex-shrink: 0; }
+    .brand-logo { height: 68px; width: auto; object-fit: contain; border-radius: 4px; flex-shrink: 0; }
+    .brand-text { display: flex; flex-direction: row; align-items: baseline; gap: 0.5rem; flex-shrink: 0; }
     .brand-name {
       font-family: var(--font-display); font-weight: 700;
-      font-size: 1rem; letter-spacing: 0.1em;
-      color: var(--text-primary); text-transform: uppercase; line-height: 1.1;
+      font-size: 1.8rem; letter-spacing: 0.1em;
+      color: var(--text-primary); text-transform: uppercase; line-height: 1;
     }
     .brand-sub {
-      font-family: var(--font-mono); font-size: 8px;
+      font-family: var(--font-mono); font-size: 9px;
       color: var(--text-muted); letter-spacing: 0.15em; text-transform: uppercase;
+      white-space: nowrap;
     }
     .header-divider { width: 1px; height: 28px; background: var(--border); flex-shrink: 0; }
     .header-meta { display: flex; gap: 1rem; align-items: center; flex-shrink: 0; }
